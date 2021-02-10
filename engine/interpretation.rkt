@@ -20,8 +20,8 @@
       (define rel (bound-relation bnd))
       (define size (expt (universe-size U) (relation-arity rel)))
       (define-values (type always never)
-        (cond [node/expr/relation? rel (values boolean? #t #f)]
-              [node/function? rel (values integer? 1 0)]
+        (cond [(node/expr/relation? rel) (values boolean? #t #f)]
+              [(node/function? rel) (values integer? 1 0)]
               [else (raise-argument-error 'instantiate-bounds "(or/c node/expr/relation? node/function?)" rel)]))
       (define mat
         (cond [(equal? (bound-lower bnd) (bound-upper bnd))

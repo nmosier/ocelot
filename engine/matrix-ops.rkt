@@ -121,3 +121,12 @@
       (let ([idx (tuple->idx universe tuple)])
         (list-ref A idx)))))
 
+; TODO: Document
+; F: function (entries: any?)
+; M: mask (entries: boolean?)
+(define (matrix/image universe F M)
+  (for*/all ([F (matrix-entries F)]
+             [M (matrix-entries M)])
+    (matrix (for/list ([f (in-list F)]
+                       [m (in-list M)])
+              (if m f 0)))))

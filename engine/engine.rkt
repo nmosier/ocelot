@@ -30,6 +30,8 @@
        (interpret-expr-op universe formula args*))]
     [(node/expr/relation arity name)
      (hash-ref relations formula (thunk (error 'interpret "unbound relation ~a" formula)))]
+    [(node/function arity name)
+     (hash-ref relations formula (thunk (error 'interpret "unbound function ~a" formula)))]
     [(node/expr/constant arity type)
      (interpret-constant universe type)]
     [(node/expr/comprehension arity decls f)
@@ -43,7 +45,10 @@
     [(node/formula/multiplicity mult expr)
      (let ([expr* (interpret-rec expr universe relations cache)])
        (interpret-multiplicity universe mult expr*))]
-    ; [(node/function arity name) (hash-ref 
+    [(node/function/image func expr)
+     (let ([args* (for/list ([arg (list func expr)])
+                    (interpret-rec arg universe relations cache))])
+       (interpret-image universe relations args*))]
     ))
 
 
@@ -157,3 +162,7 @@
     ['lone (or (not (matrix/some? universe expr)) (matrix/one? universe expr))]))
 
 
+(define (interpret-image universe relations args)
+  (printf "interpret-image~n")
+  (matrix/nary-op universe matrix/image args)
+  )

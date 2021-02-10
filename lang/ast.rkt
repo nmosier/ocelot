@@ -358,10 +358,10 @@
     (node/function arity name)))
 
 ; image: relation -> set(integer)
-(struct node/function/image (expr func) #:transparent)
-(define (image expr func)
+(struct node/function/image (func expr) #:transparent)
+(define (image func expr)
   (unless (node/expr? expr)
     (raise-argument-error 'image "node/expr?" func))
   (unless (node/function? func)
     (raise-argument-error 'image "node/function?" func))
-  (node/function/image expr func))
+  (node/function/image func expr))

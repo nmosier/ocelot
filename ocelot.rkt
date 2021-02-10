@@ -2,7 +2,8 @@
 
 (require "lang/ast.rkt" "lang/bounds.rkt" "lang/sketch.rkt" "lang/universe.rkt"
          "engine/engine.rkt" "engine/interpretation.rkt"
-         "lib/print.rkt" "lib/simplify.rkt" "lib/simplify-solve.rkt")
+         "lib/print.rkt" "lib/simplify.rkt" "lib/simplify-solve.rkt"
+         "engine/matrix.rkt")
 
 (provide
  ; lang/ast.rkt
@@ -38,4 +39,6 @@
  ; NHM 02/09/2021
  declare-function
  image
+ ; TMP:
+ matrix-entries
  )
