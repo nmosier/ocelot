@@ -23,6 +23,7 @@
 ;       * ...
 ;     * node/formula/quantified  -- quantified formula
 ;     * node/formula/multiplicity  -- multiplicity formula
+;   * node/tag -- tags
 
 ;; ARGUMENT CHECKS -------------------------------------------------------------
 
@@ -158,7 +159,7 @@
                   name)])
     (node/expr/relation arity name)))
 (define (relation-arity rel)
-  (node/expr-arity rel))
+    (node/expr-arity rel))
 (define (relation-name rel)
   (node/expr/relation-name rel))
 
@@ -337,3 +338,30 @@
 
 (struct prefab (inputs ctor) #:transparent
   #:property prop:procedure (struct-field-index ctor))
+
+
+;; TAGS ------------------------------------------------------------------------
+(struct node/inttag (rel) #:transparent #:reflection-name 'inttag)
+(define (inttag rel)
+  (unless (node/expr/relation? rel)
+    (raise-argument-error 'inttag "node/expr/relation?" rel))
+  (node/inttag rel))
+
+(define-formula-op inteq node/inttag? #:max-length 2)
+
+(struct node/function node/expr (name) #:transparent #:mutable)
+
+(define (declare-function arity [name #f])
+  (let ([name (if (false? name)
+                  (begin0 (format "r~v" next-name) (set! next-name (add1 next-name)))
+                  name)])
+    (node/function arity name)))
+
+; image: relation -> set(integer)
+(struct node/function/image (expr func) #:transparent)
+(define (image expr func)
+  (unless (node/expr? expr)
+    (raise-argument-error 'image "node/expr?" func))
+  (unless (node/function? func)
+    (raise-argument-error 'image "node/function?" func))
+  (node/function/image expr func))

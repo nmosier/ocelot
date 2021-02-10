@@ -11,6 +11,7 @@
  <: :>
  set
  ^ *
+ inttag inteq
  none univ iden
  in =
  and or => ! not
@@ -34,4 +35,7 @@
  ast->datum ast->alloy
  ; lib/simplify.rkt
  simplify simplify/solve
+ ; NHM 02/09/2021
+ declare-function
+ image
  )

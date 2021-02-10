@@ -42,7 +42,9 @@
        (interpret-quantifier universe relations quantifier decls* f cache))]
     [(node/formula/multiplicity mult expr)
      (let ([expr* (interpret-rec expr universe relations cache)])
-       (interpret-multiplicity universe mult expr*))]))
+       (interpret-multiplicity universe mult expr*))]
+    ; [(node/function arity name) (hash-ref 
+    ))
 
 
 (define (interpret-constant universe type)
@@ -153,3 +155,5 @@
     ['no   (not (matrix/some? universe expr))]
     ['some (matrix/some? universe expr)]
     ['lone (or (not (matrix/some? universe expr)) (matrix/one? universe expr))]))
+
+
