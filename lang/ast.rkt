@@ -386,3 +386,15 @@
                                           [lam (lambda (x1 ...) pred)]
                                           )
            (f/quantified-formula 'all decls lam))))]))
+
+(define-syntax (f/some stx)
+  (syntax-case stx ()
+    [(_ ([x1 r1] ...) pred)
+     (with-syntax ([(rel ...) (generate-temporaries #'(r1 ...))])
+       (syntax/loc stx
+         (let* ([x1 (declare-relation 1)] ...
+                                          [decls (list (cons x1 r1) ...)]
+                                          [lam (lambda (x1 ...) pred)]
+                                          )
+           (f/quantified-formula 'some decls lam))))]))
+

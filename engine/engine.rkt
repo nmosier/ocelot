@@ -179,11 +179,13 @@
       (if (null? decls)
           (apply f (reverse syms))
           (match-let ([(cons v r) (car decls)])
-            (apply op (for/list ([i (in-range usize)]
+            (apply op (for/list ([i (in-range (length (matrix-entries r)))]
                                  [val (in-list (matrix-entries r))]
                                  #:unless ($equal? val 0))
                         (rec (cdr decls) (cons val syms)))))))
     (rec decls '()))
   (case quantifier
-    ['all (evaluate-quantifier &&)]))
-    
+    ['all (evaluate-quantifier &&)]
+    ['some (evaluate-quantifier ||)]
+    ))
+
