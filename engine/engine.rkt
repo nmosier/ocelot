@@ -163,6 +163,5 @@
 
 
 (define (interpret-image universe relations args)
-  (printf "interpret-image~n")
   (matrix/nary-op universe matrix/image args)
   )
