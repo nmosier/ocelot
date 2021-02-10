@@ -365,3 +365,24 @@
   (unless (node/function? func)
     (raise-argument-error 'image "node/function?" func))
   (node/function/image func expr))
+
+(struct node/function/quantified node/formula (quantifier decls formula))
+
+(define (f/quantified-formula quantifier decls formula)
+  (for ([e (in-list (map cdr decls))])
+    (unless (node/function? e)
+      (raise-argument-error quantifier "node/function?" e)))
+  (unless (procedure? formula) ; TODO: Also check args
+    (raise-argument-error quantifier "procedure?" formula))
+  (node/function/quantified quantifier decls formula))
+    
+(define-syntax (f/all stx)
+  (syntax-case stx ()
+    [(_ ([x1 r1] ...) pred)
+     (with-syntax ([(rel ...) (generate-temporaries #'(r1 ...))])
+       (syntax/loc stx
+         (let* ([x1 (declare-relation 1)] ...
+                                          [decls (list (cons x1 r1) ...)]
+                                          [lam (lambda (x1 ...) pred)]
+                                          )
+           (f/quantified-formula 'all decls lam))))]))

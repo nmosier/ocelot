@@ -49,6 +49,10 @@
      (let ([args* (for/list ([arg (list func expr)])
                     (interpret-rec arg universe relations cache))])
        (interpret-image universe relations args*))]
+    [(node/function/quantified quantifier decls f)
+     (let ([decls* (for/list ([d (in-list decls)])
+                     (cons (car d) (interpret-rec (cdr d) universe relations cache)))])
+       (interpret-f-quantifier universe relations quantifier decls* f cache))]
     ))
 
 
@@ -143,7 +147,9 @@
       (if (null? decls)
           (interpret-rec f universe relations (and cache (hash-copy cache)))
           (match-let ([(cons v r) (car decls)])
-            (apply op (for/list ([i (in-range usize)][val (in-list (matrix-entries r))] #:unless ($false? val))
+            (apply op (for/list ([i (in-range usize)]
+                                 [val (in-list (matrix-entries r))]
+                                 #:unless ($false? val))
                         (hash-set! relations v (singleton-matrix universe i))
                         (begin0
                           (conn val (rec (cdr decls)))
@@ -165,3 +171,19 @@
 (define (interpret-image universe relations args)
   (matrix/nary-op universe matrix/image args)
   )
+
+(define (interpret-f-quantifier universe relations quantifier decls f cache)
+  (define usize (universe-size universe))
+  (define (evaluate-quantifier op)
+    (define (rec decls syms)
+      (if (null? decls)
+          (apply f (reverse syms))
+          (match-let ([(cons v r) (car decls)])
+            (apply op (for/list ([i (in-range usize)]
+                                 [val (in-list (matrix-entries r))]
+                                 #:unless ($equal? val 0))
+                        (rec (cdr decls) (cons val syms)))))))
+    (rec decls '()))
+  (case quantifier
+    ['all (evaluate-quantifier &&)]))
+    

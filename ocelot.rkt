@@ -39,6 +39,7 @@
  ; NHM 02/09/2021
  declare-function
  image
+ f/all
  ; TMP:
  matrix-entries
  )
