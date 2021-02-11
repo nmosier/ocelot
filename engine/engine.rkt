@@ -181,7 +181,11 @@
   (define (evaluate-quantifier op)
     (define (rec decls syms)
       (if (null? decls)
-          (apply f (reverse syms))
+          (let ([valid (for/fold ([acc #t])
+                                 ([sym (in-list syms)])
+                         (&& acc (! (= sym 0))))]
+                [res (apply f (reverse syms))])
+            (=> valid res))
           (match-let ([(cons v r) (car decls)])
             (apply op (for/list ([i (in-range (length (matrix-entries r)))]
                                  [val (in-list (matrix-entries r))]

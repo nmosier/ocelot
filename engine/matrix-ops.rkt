@@ -1,7 +1,7 @@
 #lang racket
 
 (require "../lang/universe.rkt" "matrix.rkt" (prefix-in $ racket)
-         (only-in rosette and or not for/all for*/all)
+         (only-in rosette and or not for/all for*/all if)
          (only-in rosette/base/core/bool && || => <=> !))
 
 (provide (all-defined-out))
@@ -130,3 +130,10 @@
     (matrix (for/list ([f (in-list F)]
                        [m (in-list M)])
               (if m f 0)))))
+
+; (define (matrix/f-subset? universe A B)
+;   (for*/all ([A (matrix-entries A)]
+;              [B (matrix-entries B)])
+;    (apply && (for/list ([a (in-list A)]
+;                         [b (in-list B)])
+;                (=> 
