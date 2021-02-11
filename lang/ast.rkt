@@ -159,7 +159,7 @@
                   name)])
     (node/expr/relation arity name)))
 (define (relation-arity rel)
-    (node/expr-arity rel))
+  (node/expr-arity rel))
 (define (relation-name rel)
   (node/expr/relation-name rel))
 
@@ -349,7 +349,9 @@
 
 (define-formula-op inteq node/inttag? #:max-length 2)
 
-(struct node/function node/expr (name) #:transparent #:mutable)
+(struct node/fexpr node/expr () #:transparent)
+
+(struct node/function node/fexpr (name) #:transparent #:mutable)
 
 (define (declare-function arity [name #f])
   (let ([name (if (false? name)
@@ -358,20 +360,20 @@
     (node/function arity name)))
 
 ; image: relation -> set(integer)
-(struct node/function/image (func expr) #:transparent)
+(struct node/fexpr/image node/fexpr (func expr) #:transparent)
 (define (image func expr)
   (unless (node/expr? expr)
     (raise-argument-error 'image "node/expr?" func))
   (unless (node/function? func)
     (raise-argument-error 'image "node/function?" func))
-  (node/function/image func expr))
+  (node/fexpr/image (node/expr-arity func)func expr))
 
 (struct node/function/quantified node/formula (quantifier decls formula))
 
 (define (f/quantified-formula quantifier decls formula)
   (for ([e (in-list (map cdr decls))])
-    (unless (node/function? e)
-      (raise-argument-error quantifier "node/function?" e)))
+    (unless (node/fexpr? e)
+      (raise-argument-error quantifier "node/fexpr?" e)))
   (unless (procedure? formula) ; TODO: Also check args
     (raise-argument-error quantifier "procedure?" formula))
   (node/function/quantified quantifier decls formula))

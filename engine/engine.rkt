@@ -45,7 +45,7 @@
     [(node/formula/multiplicity mult expr)
      (let ([expr* (interpret-rec expr universe relations cache)])
        (interpret-multiplicity universe mult expr*))]
-    [(node/function/image func expr)
+    [(node/fexpr/image arity func expr)
      (let ([args* (for/list ([arg (list func expr)])
                     (interpret-rec arg universe relations cache))])
        (interpret-image universe relations args*))]
