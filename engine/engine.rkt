@@ -53,6 +53,10 @@
      (let ([decls* (for/list ([d (in-list decls)])
                      (cons (car d) (interpret-rec (cdr d) universe relations cache)))])
        (interpret-f-quantifier universe relations quantifier decls* f cache))]
+    [(node/function/operator operator decls f)
+     (let ([decls* (for/list ([d (in-list decls)])
+                     (cons (car d) (interpret-rec (cdr d) universe relations cache)))])
+       (interpret-f-operator universe relations operator decls* f cache))]
     ))
 
 
@@ -187,5 +191,20 @@
   (case quantifier
     ['all (evaluate-quantifier &&)]
     ['some (evaluate-quantifier ||)]
+    ))
+
+(define (interpret-f-operator universe relations operator decls f cache)
+  (define usize (universe-size universe))
+  (define (evaluate-operator op)
+    (define (rec decls syms)
+      (if (null? decls)
+          (apply f (reverse syms))
+          (match-let ([(cons v r) (car decls)])
+            (let ([res (apply op (filter (compose ! (curry $equal? 0)) (matrix-entries r)))])
+              (rec (cdr decls) (cons res syms))))))
+    (rec decls '()))
+  (case operator
+    ['max (evaluate-operator max)]
+    ['min (evaluate-operator min)]
     ))
 

@@ -42,10 +42,17 @@
   (interpretation U (for*/list ([i (in-list interps)][e (in-list (interpretation-entries i))]) e)))
 
 (define (interpretation->relations interp)
+  ; (pretty-print interp)
   (match-define (interpretation U entries) interp)
   (for/hash ([pair (in-list entries)])
     (match-define (cons rel mat) pair)
     (define contents (matrix-entries mat))
     (define arity (matrix-arity U contents))
-    (values rel (for/list ([(x i) (in-indexed contents)] #:when x)
-                  (idx->tuple U arity i)))))
+    (define good (cond [(node/expr/relation? rel) identity]
+                       [(node/function? rel) (lambda (x)
+                                               (! ($or (constant? x)
+                                                       ($equal? x 0))))]))
+    (values rel (for/list ([(x i) (in-indexed contents)] #:when (good x))
+                  (let ([tuple (idx->tuple U arity i)])
+                    (cond [(boolean? x) tuple]
+                          [else (cons tuple x)]))))))

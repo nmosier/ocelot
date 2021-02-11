@@ -398,3 +398,34 @@
                                           )
            (f/quantified-formula 'some decls lam))))]))
 
+(struct node/function/operator node/formula (operator decls formula))
+
+(define (f/operator-formula operator decls formula)
+  (for ([e (in-list (map cdr decls))])
+    (unless (node/function? e)
+      (raise-argument-error operator "node/function?" e)))
+  (unless (procedure? formula)
+    (raise-argument-error operator "procedure?" formula))
+  (node/function/operator operator decls formula))
+
+(define-syntax (f/max stx)
+  (syntax-case stx ()
+    [(_ ([x1 r1] ...) pred)
+     (with-syntax ([(rel ...) (generate-temporaries #'(r1 ...))])
+       (syntax/loc stx
+         (let* ([x1 (declare-relation 1)] ...
+                                          [decls (list (cons x1 r1) ...)]
+                                          [lam (lambda (x1 ...) pred)])
+           (f/operator-formula 'max decls lam))))]))
+           
+
+(define-syntax (f/min stx)
+  (syntax-case stx ()
+    [(_ ([x1 r1] ...) pred)
+     (with-syntax ([(rel ...) (generate-temporaries #'(r1 ...))])
+       (syntax/loc stx
+         (let* ([x1 (declare-relation 1)] ...
+                                          [decls (list (cons x1 r1) ...)]
+                                          [lam (lambda (x1 ...) pred)])
+           (f/operator-formula 'min decls lam))))]))
+           
