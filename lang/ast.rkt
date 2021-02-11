@@ -366,7 +366,16 @@
     (raise-argument-error 'image "node/expr?" func))
   (unless (node/function? func)
     (raise-argument-error 'image "node/function?" func))
-  (node/fexpr/image (node/expr-arity func)func expr))
+  (node/fexpr/image (node/expr-arity func) func expr))
+
+(struct node/formula/image? node/formula (func expr) #:transparent)
+(define (image? func expr)
+  (unless (node/expr? expr)
+    (raise-argument-error 'image? "node/expr?" func))
+  (unless (node/function? func)
+    (raise-argument-error 'image? "node/function?" func))
+  (node/formula/image? func expr))
+
 
 (struct node/function/quantified node/formula (quantifier decls formula))
 

@@ -38,7 +38,7 @@
  simplify simplify/solve
  ; NHM 02/09/2021
  declare-function
- image
+ image image?
  f/all f/some f/max
  ; TMP:
  matrix-entries

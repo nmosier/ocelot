@@ -49,6 +49,10 @@
      (let ([args* (for/list ([arg (list func expr)])
                     (interpret-rec arg universe relations cache))])
        (interpret-image universe relations args*))]
+    [(node/formula/image? func expr)
+     (let ([args* (for/list ([arg (list func expr)])
+                    (interpret-rec arg universe relations cache))])
+       (interpret-image? universe relations args*))]
     [(node/function/quantified quantifier decls f)
      (let ([decls* (for/list ([d (in-list decls)])
                      (cons (car d) (interpret-rec (cdr d) universe relations cache)))])
@@ -173,8 +177,10 @@
 
 
 (define (interpret-image universe relations args)
-  (matrix/nary-op universe matrix/image args)
-  )
+  (matrix/nary-op universe matrix/image args))
+
+(define (interpret-image? universe relations args)
+  (matrix/nary-op universe matrix/image? args))
 
 (define (interpret-f-quantifier universe relations quantifier decls f cache)
   (define usize (universe-size universe))
