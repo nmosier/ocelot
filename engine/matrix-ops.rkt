@@ -138,3 +138,6 @@
                          [m (in-list M)])
                 (=> m (! (= f 0)))))))
                        
+(define (matrix/f-domain universe F)
+  (for*/all ([F (matrix-entries F)])
+    (matrix (for/list ([f (in-list F)]) (! (= f 0))))))

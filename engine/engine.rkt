@@ -61,7 +61,11 @@
      (let ([decls* (for/list ([d (in-list decls)])
                      (cons (car d) (interpret-rec (cdr d) universe relations cache)))])
        (interpret-f-operator universe relations operator decls* f cache))]
+    [(node/expr/f/dom arity func)
+     (let ([func* (interpret-rec func universe relations cache)])
+       (interpret-f-dom universe relations func* cache))]
     ))
+
 
 
 (define (interpret-constant universe type)
@@ -218,3 +222,5 @@
     ['min (evaluate-operator min)]
     ))
 
+(define (interpret-f-dom universe relations func cache)
+  (matrix/f-domain universe func))

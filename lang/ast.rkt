@@ -440,3 +440,10 @@
                                           [lam (lambda (x1 ...) pred)])
            (f/operator-formula 'min decls lam))))]))
            
+(struct node/expr/f node/expr () #:transparent)
+(struct node/expr/f/dom node/expr/f (func) #:transparent)
+(define (f/domain func)
+  (unless (node/fexpr? func)
+    (raise-argument-error 'f/dom "node/fexpr?" func))
+  (node/expr/f/dom (node/expr-arity func) func))
+

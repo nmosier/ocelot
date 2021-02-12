@@ -39,7 +39,7 @@
  ; NHM 02/09/2021
  declare-function
  image image?
- f/all f/some f/max
+ f/all f/some f/max f/domain
  ; TMP:
  matrix-entries
  )
