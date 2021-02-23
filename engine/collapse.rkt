@@ -78,8 +78,6 @@
   (interference))
 
 (define (collapse* node bnds interference)
-  (pretty-print (interference))
-  (pretty-print node)
   (match node
     [(? node/formula?) (collapse-formula node bnds interference)]
     [(? node/expr?) (collapse-expr node bnds interference)]
@@ -89,8 +87,11 @@
 (define (collapse-formula formula bnds interference)
   (match formula
     [(node/formula/op args) (collapse-formula-op formula args bnds interference)]
-    [(node/formula/quantified quantifier decls f) (collapse-formula-quantified)]
+    [(node/formula/quantified quantifier decls f)
+     (collapse-formula-quantified quantifier decls f bnds interference)]
     [(node/formula/multiplicity mult expr) (collapse-expr expr)]
+    [(node/function/quantified quantifier decls formula)
+     (collapse-function-quantified quantifier decls formula bnds interference)]
     ))
 
 (define (collapse-formula-op formula args bnds interference)
@@ -107,8 +108,9 @@
     ))
 
 (define (collapse-formula-quantified quantifier decls f bnds interference)
-  (define decl-bnds (for/list ([decl (in-list decls)])
-                      (cons (car decl) (collapse* (cdr decl) bnds interference))))
+  (define decl-bnds (for/fold ([acc (list)]) ([decl (in-list decls)])
+                      (append acc (list (car decl)
+                                        (collapse* (cdr decl) bnds interference)))))
   (define bnds* (apply (curry hash-set* bnds) decl-bnds))
   (collapse-formula f bnds* interference))
   
@@ -116,6 +118,8 @@
   (match expr
     [(node/expr/op arity children) (collapse-expr-op expr children bnds i)]
     [(node/expr/relation arity name) (collapse-expr-relation expr bnds i)]
+    [(node/expr/f/dom arity func) (collapse* func bnds i)]
+    [(? node/fexpr?) (collapse-fexpr expr bnds i)]
     ))
 
 (define (collapse-expr-op expr children bnds i)
@@ -158,6 +162,28 @@
   (define bs* (drop-right bs 1))
   (for ([pos (in-range (length bs*))])
     (collapse-join-pair (list-ref bs* pos) bn pos i)))
-             
-    
+
+
+(define (collapse-fexpr fexpr bnds i)
+  (match fexpr
+    [(node/function arity name) (collapse-fexpr-function fexpr bnds i)]
+    [(node/fexpr/image arity func expr) (collapse-fexpr-image func expr bnds i)]
+    ))
+
+
+(define (collapse-fexpr-function func bnds i)
+  (define bnd (hash-ref bnds func))
+  (add-interference bnd bnd i)
+  bnd)
+
+(define (collapse-function-quantified quantifier decls formula bnds i)
+  (for ([decl (in-list decls)])
+    (collapse* (cdr decl) bnds i)))
+
+(define (collapse-fexpr-image func expr bnds i)
+  (define func-bnds (collapse* func bnds i))
+  (define expr-bnds (collapse* expr bnds i))
+  (add-interference func-bnds expr-bnds i)
+  func-bnds)
+
 (provide collapse)
