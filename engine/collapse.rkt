@@ -48,7 +48,10 @@
     (define resl (for/list ([t1 (in-set b1)])
                    (for/set ([t2 (in-set b2)])
                      (append t1 t2))))
-    (apply set-union resl))
+    (cond
+      [(null? resl) (list->set '())]
+      [(= 1 (length resl)) (first resl)]
+      [else (apply set-union resl)]))
 
   (for/fold ([acc b1]) ([bi (in-list bs)])
     (bound-product-pair acc bi)))
@@ -72,12 +75,15 @@
 
 (define (collapse node bnds)
   (define bnds* (for/hash ([bnd (in-list (bounds-entries bnds))])
-                  (values (bound-relation bnd) (bound-upper bnd))))
+                  (values (bound-relation bnd) (list->set (bound-upper bnd)))))
   (define interference (make-parameter (hash)))
   (collapse* node bnds* interference)
   (interference))
 
-(define (collapse* node bnds interference)
+(define/contract (collapse* node bnds interference)
+  ($-> (or/c node/formula? node/expr?)
+       (hashof (or/c node/expr/relation? node/function?) (setof (listof symbol?)))
+       parameter? (or/c bnd? void?))
   (match node
     [(? node/formula?) (collapse-formula node bnds interference)]
     [(? node/expr?) (collapse-expr node bnds interference)]
@@ -121,7 +127,29 @@
     [(node/expr/f/dom arity func) (collapse* func bnds i)]
     [(? node/fexpr?) (collapse-fexpr expr bnds i)]
     [(node/expr/constant arity type) (collapse-expr-constant type i)]
+    [(node/expr/comprehension arity decls formula)
+     (collapse-expr-comprehension decls formula bnds i)]
+    [(node/expr/domain arity expr) (collapse-expr-domain expr bnds i)]
     ))
+
+(define (collapse-expr-comprehension decls formula bnds i)
+  ; TODO: This is shared -- create shared function
+  (define decl-kv (for/fold ([acc (list)]) ([decl (in-list decls)])
+                      (append acc (list (car decl)
+                                        (collapse* (cdr decl) bnds i)))))
+  (define bnds* (apply (curry hash-set* bnds) decl-kv))
+  (collapse-formula formula bnds* i)
+  (define decl-v (for/list ([n (in-range (length decl-kv))] #:when (odd? n))
+                   (list-ref decl-kv n)))
+  (apply bound-product decl-v)
+  )
+
+(define (collapse-expr-domain expr bnds i)
+  (define expr-bnds (collapse* expr bnds i))
+  (define domain-bnds (get-ith expr-bnds 0))
+  (add-interference domain-bnds domain-bnds i) ; this is unnecessary
+  domain-bnds)
+  
 
 (define (collapse-expr-constant type i)
   (match type
@@ -142,6 +170,20 @@
          (? node/expr/op/~?))
      (void)]
     [(? node/expr/op/join?) (collapse-join children* i)]
+    [(or (? node/expr/op/^?)
+         (? node/expr/op/*?))
+     (let ([child (first children*)])
+       (add-interference (get-ith child 0) (get-ith child 1) i))]
+    [(? node/expr/op/:>?)
+     (let* ([a (first children*)]
+            [b (second children*)]
+            [arity (length (set-first a))]
+            [index (- arity 1)])
+       (add-interference b (get-ith a index) i))]
+    [(? node/expr/op/<:?)
+     (let* ([a (first children*)]
+            [b (second children*)])
+       (add-interference a (get-ith b 0) i))]
     )
   (match expr
     [(? node/expr/op/+?) (apply set-union children*)]
@@ -151,6 +193,19 @@
     [(? node/expr/op/~?) (for/set ([p (in-set (first children*))])
                           (list (second p) (first p)))]
     [(? node/expr/op/join?) (apply bound-join children*)]
+    [(or (? node/expr/op/^?)
+         (? node/expr/op/*?))
+     (let* ([child (first children*)]
+            [union (set-union (get-ith child 0) (get-ith child 1))])
+       (bound-product union union))]
+    [(? node/expr/op/:>?)
+     (let ([a (first children*)]
+           [b (second children*)])
+       (for/set ([t (in-set a)] #:when (set-member? b (last t))) t))]
+    [(? node/expr/op/<:?)
+     (let ([a (first children*)]
+           [b (second children*)])
+       (for/set ([t (in-set b)] #:when (set-member? a (first t))) t))]
     )
   )
 
@@ -159,10 +214,14 @@
   (add-interference bnd bnd i)
   bnd)
 
+(define/contract (get-ith b index)
+  ($-> bnd? (and/c integer? (curry <= 0))
+       (and/c bnd? (lambda (s)
+                     (for/and ([t s]) (= 1 (length t))))))
+  (for/set ([t (in-set b)]) (list (list-ref t index))))
+
 (define (collapse-join bs i)
   (define (collapse-join-pair bl br index i)
-    (define (get-ith b index)
-      (for/set ([t (in-set b)]) (list (list-ref t index))))
     (define bl-last (get-ith bl (- (length (set-first bl)) 1)))
     (define br-ith (get-ith br index))
     (add-interference bl-last br-ith i))

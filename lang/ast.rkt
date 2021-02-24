@@ -177,8 +177,18 @@
      (fprintf port "~v" (node/expr/constant-type self)))])
 (define none (node/expr/constant 1 'none))
 (define univ (node/expr/constant 1 'univ))
-(define iden (node/expr/constant 2 'iden))
+; (define iden (node/expr/constant 2 'iden))
 
+(define/contract (iden unary-expr)
+  ($-> (and/c node/expr? (lambda (e) (= 1 (node/expr-arity e)))) node/expr?)
+  (set ([a unary-expr] [b unary-expr]) (= a b)))
+
+;; -- other --------------------------------------------------------------------
+
+(struct node/expr/domain node/expr (expr) #:transparent)
+(define/contract (domain expr)
+  ($-> node/expr? node/expr/domain?)
+  (node/expr/domain 1 expr))
 
 ;; FORMULAS --------------------------------------------------------------------
 

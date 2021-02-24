@@ -40,6 +40,7 @@
  declare-function
  image image?
  f/all f/some f/max f/domain
+ domain
  ; TMP:
  matrix-entries
  relation-name

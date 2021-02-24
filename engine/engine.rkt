@@ -64,9 +64,14 @@
     [(node/expr/f/dom arity func)
      (let ([func* (interpret-rec func universe relations cache)])
        (interpret-f-dom universe relations func* cache))]
+    [(node/expr/domain arity expr)
+     (let ([expr* (interpret-rec expr universe relations cache)])
+       (interpret-domain universe expr*))]
     ))
 
-
+(define (interpret-domain universe expr*)
+  (matrix/get-domain universe expr*))
+  
 
 (define (interpret-constant universe type)
   (match type

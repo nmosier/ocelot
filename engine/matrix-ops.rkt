@@ -141,3 +141,11 @@
 (define (matrix/f-domain universe F)
   (for*/all ([F (matrix-entries F)])
     (matrix (for/list ([f (in-list F)]) (! (= f 0))))))
+
+(define (matrix/get-domain universe F)
+  (define univSize (universe-size universe))
+  (define step (expt univSize (- (matrix-arity universe F) 1)))
+  (for*/all ([F (matrix-entries F)])
+    (matrix (for/list ([row (in-range univSize)])
+              (for/fold ([acc #t]) ([col (in-range step)])
+                (&& acc (list-ref F (+ (* row step) col))))))))
