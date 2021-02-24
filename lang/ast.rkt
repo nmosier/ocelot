@@ -163,6 +163,12 @@
 (define (relation-name rel)
   (node/expr/relation-name rel))
 
+(define (node-name node)
+  (match node
+    [(node/expr/relation arity name) name]
+    [(node/function arity name) name]
+    ))
+
 ;; -- constants ----------------------------------------------------------------
 
 (struct node/expr/constant node/expr (type) #:transparent
