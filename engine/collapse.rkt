@@ -89,7 +89,7 @@
     [(node/formula/op args) (collapse-formula-op formula args bnds interference)]
     [(node/formula/quantified quantifier decls f)
      (collapse-formula-quantified quantifier decls f bnds interference)]
-    [(node/formula/multiplicity mult expr) (collapse-expr expr)]
+    [(node/formula/multiplicity mult expr) (collapse-expr expr bnds interference)]
     [(node/function/quantified quantifier decls formula)
      (collapse-function-quantified quantifier decls formula bnds interference)]
     ))
@@ -120,6 +120,14 @@
     [(node/expr/relation arity name) (collapse-expr-relation expr bnds i)]
     [(node/expr/f/dom arity func) (collapse* func bnds i)]
     [(? node/fexpr?) (collapse-fexpr expr bnds i)]
+    [(node/expr/constant arity type) (collapse-expr-constant type i)]
+    ))
+
+(define (collapse-expr-constant type i)
+  (match type
+    ['none (list->set '())]
+    ; 'iden: (disabled)
+    ; 'univ: (disabled)
     ))
 
 (define (collapse-expr-op expr children bnds i)
