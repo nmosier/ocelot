@@ -186,4 +186,51 @@
   (add-interference func-bnds expr-bnds i)
   func-bnds)
 
-(provide collapse)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; COLORING ;;;;;;;;;;;;;;;;;;;;;
+
+(define graph? (hashof symbol? (setof symbol?)))
+
+(define/contract (check-graph g)
+  ($-> graph? boolean?)
+  (for/and ([(src src-adj) (in-hash g)])
+    (for/and ([dst (in-set src-adj)])
+      (define dst-adj (hash-ref g dst))
+      (set-member? dst-adj src))))
+
+(define/contract (remove-node g rm-node)
+  ($-> graph? symbol? graph?)
+  (define g* (hash-remove g rm-node))
+  (for/hash ([(node adj) (in-hash g*)])
+    (values node (set-remove adj rm-node))))
+
+(define/contract (color g)
+  ($-> graph? (hashof symbol? integer?))
+  (unless (check-graph g) (raise-argument-error color "check-graph" g))
+  ; remove self-edges
+  (define g* (for/hash ([(node adj) (in-hash g)])
+               (values node (set-remove adj node))))
+  (define (color-rec g)
+    ; find min degree
+    (if (hash-empty? g)
+        (hash)
+        (let*-values
+            ([(_ node) (for/fold ([min-deg (hash-count g)] [min-node (void)])
+                                 ([(node adj) (in-hash g)])
+                         (define deg (set-count adj))
+                         (if (<= deg min-deg)
+                             (values deg node)
+                             (values min-deg min-node)))]
+             [(coloring) (color-rec (remove-node g node))]
+             [(used) (for/set ([adj-node (in-set (hash-ref g node))])
+                              (hash-ref coloring adj-node))]
+             ; find minimum nonnegative integer not in `used`
+             [(color) (for/first ([color (in-range (+ 1 (set-count used)))]
+                                         #:unless (set-member? used color))
+                      color)]
+             )
+          (hash-set coloring node color))))
+  (color-rec g*))
+               
+(provide collapse color)
