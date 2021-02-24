@@ -1,9 +1,12 @@
 #lang racket
 
-(require "../lang/bounds.rkt" "../lang/universe.rkt" 
+(require "../lang/universe.rkt" 
          "../engine/interpretation.rkt" "../engine/matrix.rkt" "tuple.rkt"
-         (only-in "../lang/ast.rkt" relation-arity relation-name declare-relation)
-         (only-in rosette && => <=>))
+         (only-in "../lang/ast.rkt" relation-arity relation-name declare-relation
+                  node/expr/relation?)
+         (only-in rosette && => <=>)
+         (except-in "../lang/bounds.rkt" bounds)
+         (rename-in "../lang/bounds.rkt" (bounds $bounds)))
 (provide generate-sbp)
 
 
@@ -96,12 +99,18 @@
 
 ; Generate a predicate over the booleans in `interp` that rules out symmetries
 ; in the given bounds
-(define (generate-sbp interp bounds)
-  (define symmetries (partition bounds))
-  (define U (bounds-universe bounds))
+(define (generate-sbp interp_raw bounds_raw)
+  (define interp (interpretation (interpretation-universe interp_raw)
+                                 (filter (compose node/expr/relation? car)
+                                         (interpretation-entries interp_raw))))
+  (define bnds ($bounds (bounds-universe bounds_raw)
+                       (filter (compose node/expr/relation? bound-relation)
+                               (bounds-entries bounds_raw))))
+  (define symmetries (partition bnds))
+  (define U (bounds-universe bnds))
   (define relParts
     (sort
-     (for/list ([bnd (bounds-entries bounds)] #:unless (constant-bound? bnd))
+     (for/list ([bnd (bounds-entries bnds)] #:unless (constant-bound? bnd))
        (relation-parts
         (bound-relation bnd)
         (tupleset 1 (for*/fold ([reps (set)])
