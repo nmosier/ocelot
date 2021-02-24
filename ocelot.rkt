@@ -3,7 +3,7 @@
 (require "lang/ast.rkt" "lang/bounds.rkt" "lang/sketch.rkt" "lang/universe.rkt"
          "engine/engine.rkt" "engine/interpretation.rkt"
          "lib/print.rkt" "lib/simplify.rkt" "lib/simplify-solve.rkt"
-         "engine/matrix.rkt")
+         "engine/matrix.rkt" "engine/collapse.rkt")
 
 (provide
  ; lang/ast.rkt
@@ -42,4 +42,7 @@
  f/all f/some f/max f/domain
  ; TMP:
  matrix-entries
+ relation-name
+ color
+ collapse
  )
