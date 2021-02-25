@@ -10,61 +10,39 @@
 
 ;; utilities -------------------------
 
-(define (setof c)
-  (lambda (s)
-    (if (set? s)
-        (for/and ([x (in-set s)]) (c x))
-        #f)))
+(define bnd? (listof (set/c symbol?)))
+(define bnds? (hash/c (or/c node/expr/relation? node/function?) bnd?))
+(define graph? (hash/c symbol? (set/c symbol?)))
+(define interference? graph?)
 
-(define (hashof ck cv)
-  (lambda (h)
-    (if (hash? h)
-        (for/and ([(k v) (in-hash h)]) (and (ck k) (cv v)))
-        #f)))
+(define/contract (get-ith b i)
+  ($-> bnd? natural? bnd?)
+  (list (list-ref b i)))
 
-(define bnd? (setof list?))
-(define interference? (hashof symbol? (setof symbol?)))
+(define/contract (add-edge g n1 n2)
+  ($-> graph? symbol? symbol? graph?)
+  (define (half g n1 n2) (hash-update g n1 (lambda (s) (set-add s n2)) (list->set '())))
+  (half (half g n1 n2) n2 n1))
 
 ; recall: (upper) bounds are sets of tuples.
-(define (add-interference b1 b2 i)
-  ($-> bnd? bnd? interference?)
-  (define (add-pair a1 a2 i)
-    (define (add-pair-half a1 a2 i)
-      (let* ([i* (i)]
-             [s1 (hash-ref i* a1 (list->set '()))]
-             [s1* (set-add s1 a2)])
-        (i (hash-set i* a1 s1*))))
-    
-    (add-pair-half a1 a2 i)
-    (add-pair-half a2 a1 i))
+(define/contract (add-interference b1 b2 i)
+  ($-> bnd? bnd? (parameter/c interference?) void?)
+  (define/contract (add-interference-set s1 s2 i)
+    ($-> (set/c symbol?) (set/c symbol?) interference? interference?)
+    (for*/fold ([i* i]) ([a1 (in-set s1)] [a2 (in-set s2)]) (add-edge i* a1 a2)))
+  (define i* (for/fold ([i* (i)]) ([s1 (in-list b1)] [s2 (in-list b2)])
+               (add-interference-set s1 s2 i*)))
+  (i i*))
 
-  (for ([t1 (in-set b1)])
-    (for ([t2 (in-set b2)])
-      (for ([a1 (in-list t1)] [a2 (in-list t2)])
-        (add-pair a1 a2 i)))))
-
-(define (bound-product b1 . bs)
-  (define (bound-product-pair b1 b2)
-    (define resl (for/list ([t1 (in-set b1)])
-                   (for/set ([t2 (in-set b2)])
-                     (append t1 t2))))
-    (cond
-      [(null? resl) (list->set '())]
-      [(= 1 (length resl)) (first resl)]
-      [else (apply set-union resl)]))
-
-  (for/fold ([acc b1]) ([bi (in-list bs)])
-    (bound-product-pair acc bi)))
+(define/contract (bound-product . bs)
+  ($-> bnd? ... bnd?)
+  (apply append bs))
 
 ; bounds are list of tuples this time
-(define (bound-join . bs)
-  (define (bound-join-pair b1 b2)
-    (define b1* (for/set ([t (in-set b1)]) (drop-right t 1)))
-    (define b2* (for/set ([t (in-set b2)]) (drop t 1)))
-    (bound-product b1* b2*))
-  (for/fold ([bres (last bs)]) ([bi (in-list (drop-right bs 1))])
-    (bound-join-pair bi bres)))
-    
+(define/contract (bound-join . bs)
+  ($-> bnd? ... bnd?)
+  (for/fold ([acc (last bs)]) ([bi (in-list (drop-right bs 1))])
+    (append (drop-right bi 1) (drop acc 1))))
 
 ;; universe collapsing --------------
 
@@ -73,24 +51,40 @@
 
 ;; Expressions: return updated bounds and indirectly updates interference graph.
 
-(define (collapse node bnds)
+(define/contract (collapse node bnds)
+  ($-> (or/c node/expr? node/formula?) bounds? interference?)
   (define bnds* (for/hash ([bnd (in-list (bounds-entries bnds))])
-                  (values (bound-relation bnd) (list->set (bound-upper bnd)))))
+                  (let* ([rel (bound-relation bnd)]
+                         [bndl (bound-upper bnd)]
+                         [arity (relation-arity rel)])
+                    (values rel
+                            (for/list ([i (in-range arity)])
+                              (for/set ([t (in-list bndl)])
+                                (list-ref t i)))))))
   (define interference (make-parameter (hash)))
   (collapse* node bnds* interference)
   (interference))
 
+(define (check i)
+  (define i* (i))
+  (define stages (list->set '(FetchStage ExecuteStage WritebackStage MemoryHierarchy)))
+  (define cur (hash-ref i* 'FetchStage (list->set '())))
+  (subset? cur stages))
+
 (define/contract (collapse* node bnds interference)
-  ($-> (or/c node/formula? node/expr?)
-       (hashof (or/c node/expr/relation? node/function?) (setof (listof symbol?)))
-       parameter? (or/c bnd? void?))
-  (match node
-    [(? node/formula?) (collapse-formula node bnds interference)]
-    [(? node/expr?) (collapse-expr node bnds interference)]
-    ))
+  ($-> (or/c node/formula? node/expr?) bnds? parameter? (or/c bnd? void?))
+  (unless (check interference) (raise "damn"))
+  (define bnd (match node
+                [(? node/formula?) (collapse-formula node bnds interference)]
+                [(? node/expr?) (collapse-expr node bnds interference)]
+                ))
+  (unless (check interference) (begin (pretty-print node)
+                                      (raise "stopping")))
+  bnd)
   
 
-(define (collapse-formula formula bnds interference)
+(define/contract (collapse-formula formula bnds interference)
+  ($-> node/formula? bnds? (parameter/c interference?) void?)
   (match formula
     [(node/formula/op args) (collapse-formula-op formula args bnds interference)]
     [(node/formula/quantified quantifier decls f)
@@ -98,7 +92,8 @@
     [(node/formula/multiplicity mult expr) (collapse-expr expr bnds interference)]
     [(node/function/quantified quantifier decls formula)
      (collapse-function-quantified quantifier decls formula bnds interference)]
-    ))
+    )
+  (void))
 
 (define (collapse-formula-op formula args bnds interference)
   (define args* (for/list ([arg (in-list args)]) (collapse* arg bnds interference)))
@@ -110,7 +105,8 @@
      (void)]
     [(or (? node/formula/op/in?)
          (? node/formula/op/=?))
-     (add-interference (first args*) (second args*) interference)]
+     (add-interference (first args*) (second args*) interference)
+     (pretty-print args*)]
     ))
 
 (define (collapse-formula-quantified quantifier decls f bnds interference)
@@ -120,7 +116,8 @@
   (define bnds* (apply (curry hash-set* bnds) decl-bnds))
   (collapse-formula f bnds* interference))
   
-(define (collapse-expr expr bnds i)
+(define/contract (collapse-expr expr bnds i)
+  ($-> node/expr? bnds? (parameter/c interference?) bnd?)
   (match expr
     [(node/expr/op arity children) (collapse-expr-op expr children bnds i)]
     [(node/expr/relation arity name) (collapse-expr-relation expr bnds i)]
@@ -147,13 +144,13 @@
 (define (collapse-expr-domain expr bnds i)
   (define expr-bnds (collapse* expr bnds i))
   (define domain-bnds (get-ith expr-bnds 0))
-  (add-interference domain-bnds domain-bnds i) ; this is unnecessary
+  (add-interference domain-bnds domain-bnds i) ; NOTE: this is unnecessary
   domain-bnds)
   
 
 (define (collapse-expr-constant type i)
   (match type
-    ['none (list->set '())]
+    ['none (list (list->set '()))]
     ; 'iden: (disabled)
     ; 'univ: (disabled)
     ))
@@ -177,7 +174,7 @@
     [(? node/expr/op/:>?)
      (let* ([a (first children*)]
             [b (second children*)]
-            [arity (length (set-first a))]
+            [arity (length a)]
             [index (- arity 1)])
        (add-interference b (get-ith a index) i))]
     [(? node/expr/op/<:?)
@@ -186,12 +183,15 @@
        (add-interference a (get-ith b 0) i))]
     )
   (match expr
-    [(? node/expr/op/+?) (apply set-union children*)]
+    [(? node/expr/op/+?) (for/list ([index (in-range (node/expr-arity expr))])
+                           (for/fold ([acc (list->set '())]) ([bnd (in-list children*)])
+                             (set-union acc (list-ref bnd index))))]
     [(? node/expr/op/-?) (first children*)]
-    [(? node/expr/op/&?) (apply set-intersect children*)]
+    [(? node/expr/op/&?) (for/list ([index (in-range (node/expr-arity expr))])
+                           (for/fold ([acc (list->set '())]) ([bnd (in-list children*)])
+                             (set-intersect acc (list-ref bnd index))))]
     [(? node/expr/op/->?) (apply bound-product children*)]
-    [(? node/expr/op/~?) (for/set ([p (in-set (first children*))])
-                          (list (second p) (first p)))]
+    [(? node/expr/op/~?) (reverse (first children*))]
     [(? node/expr/op/join?) (apply bound-join children*)]
     [(or (? node/expr/op/^?)
          (? node/expr/op/*?))
@@ -201,11 +201,11 @@
     [(? node/expr/op/:>?)
      (let ([a (first children*)]
            [b (second children*)])
-       (for/set ([t (in-set a)] #:when (set-member? b (last t))) t))]
+       (list-update a 0 (lambda (s) (set-subtract s (first b)))))]
     [(? node/expr/op/<:?)
      (let ([a (first children*)]
            [b (second children*)])
-       (for/set ([t (in-set b)] #:when (set-member? a (first t))) t))]
+       (list-update b 0 (lambda (s) (set-subtract s (first a)))))]
     )
   )
 
@@ -214,15 +214,9 @@
   (add-interference bnd bnd i)
   bnd)
 
-(define/contract (get-ith b index)
-  ($-> bnd? (and/c integer? (curry <= 0))
-       (and/c bnd? (lambda (s)
-                     (for/and ([t s]) (= 1 (length t))))))
-  (for/set ([t (in-set b)]) (list (list-ref t index))))
-
 (define (collapse-join bs i)
   (define (collapse-join-pair bl br index i)
-    (define bl-last (get-ith bl (- (length (set-first bl)) 1)))
+    (define bl-last (get-ith bl (- (length bl) 1)))
     (define br-ith (get-ith br index))
     (add-interference bl-last br-ith i))
   (define bn (last bs))
@@ -257,7 +251,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; COLORING ;;;;;;;;;;;;;;;;;;;;;
 
-(define graph? (hashof symbol? (setof symbol?)))
 
 (define/contract (check-graph g)
   ($-> graph? boolean?)
@@ -273,7 +266,7 @@
     (values node (set-remove adj rm-node))))
 
 (define/contract (color g)
-  ($-> graph? (hashof symbol? integer?))
+  ($-> graph? (hash/c symbol? integer?))
   (unless (check-graph g) (raise-argument-error color "check-graph" g))
   ; remove self-edges
   (define g* (for/hash ([(node adj) (in-hash g)])
