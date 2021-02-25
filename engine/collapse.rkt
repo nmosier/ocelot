@@ -61,7 +61,9 @@
                             (for/list ([i (in-range arity)])
                               (for/set ([t (in-list bndl)])
                                 (list-ref t i)))))))
-  (define interference (make-parameter (hash)))
+  (define atoms (universe-atoms (bounds-universe bnds)))
+  (define interference (make-parameter (for/hash ([atom (in-list atoms)])
+                                         (values atom (list->set '())))))
   (collapse* node bnds* interference)
   (interference))
 
@@ -73,13 +75,10 @@
 
 (define/contract (collapse* node bnds interference)
   ($-> (or/c node/formula? node/expr?) bnds? parameter? (or/c bnd? void?))
-  (unless (check interference) (raise "damn"))
   (define bnd (match node
                 [(? node/formula?) (collapse-formula node bnds interference)]
                 [(? node/expr?) (collapse-expr node bnds interference)]
                 ))
-  (unless (check interference) (begin (pretty-print node)
-                                      (raise "stopping")))
   bnd)
   
 
@@ -105,8 +104,7 @@
      (void)]
     [(or (? node/formula/op/in?)
          (? node/formula/op/=?))
-     (add-interference (first args*) (second args*) interference)
-     (pretty-print args*)]
+     (add-interference (first args*) (second args*) interference)]
     ))
 
 (define (collapse-formula-quantified quantifier decls f bnds interference)
@@ -292,5 +290,83 @@
              )
           (hash-set coloring node color))))
   (color-rec g*))
-               
-(provide collapse color)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; UNIVERSE COLLAPSING ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define node? (or/c node/expr? node/formula?))
+(define bounded-node? (or/c node/expr/relation? node/function?))
+
+(define expansion? (listof (hash/c integer? symbol?)))
+(define expansions? (hash/c bounded-node? expansion?))
+
+(define (bound/c domain) (listof (listof domain)))
+
+(define (solution-bound/c domain)
+  (listof (or/c (listof domain) (cons/c (listof domain) integer?))))
+(define (solution/c domain) (hash/c bounded-node? (solution-bound/c domain)))
+
+(define/contract (transform-bound bnd coloring)
+  ($-> (bound/c symbol?) (hash/c symbol? integer?) (bound/c integer?))
+  (for/list ([t (in-list bnd)])
+    (for/list ([a (in-list t)])
+      (hash-ref coloring a))))
+
+(define/contract (get-expansion bnd arity coloring)
+  ($-> (bound/c symbol?) natural? (hash/c symbol? integer?) expansion?)
+  (for/list ([i (in-range arity)])
+    (for/hash ([t (in-list bnd)])
+      (let ([a (list-ref t i)])
+        (values (hash-ref coloring a) a)))))
+
+(define/contract (collapse-universe formula bnds)
+  ($-> node? bounds? (values bounds? expansions?))
+
+  (define interference (collapse formula bnds))
+  (define coloring (color interference))
+
+  ; Destructure bnds
+  (define univ (bounds-universe bnds))
+  (define entries (bounds-entries bnds))
+  ; (define atoms (universe-atoms univ))
+
+  ; Find number of atoms in collapsed mapping
+  (define natoms* (+ 1 (apply max (hash-values coloring))))
+  
+  ; Convert bnds
+  (define atoms* (for/list ([i (in-range natoms*)]) i))
+  (define univ* (make-universe atoms*))
+  (define entries* (for/list ([bnd (in-list entries)])
+                     (let* ([rel (bound-relation bnd)]
+                            [lower (bound-lower bnd)]
+                            [upper (bound-upper bnd)]
+                            [lower* (transform-bound lower coloring)]
+                            [upper* (transform-bound upper coloring)])
+                       (bound rel lower* upper*))))
+  (define bnds* (bounds univ* entries*))
+
+  ; Get expansions
+  (define expansions (for/hash ([bnd (in-list entries)])
+                       (let* ([rel (bound-relation bnd)]
+                              [upper (bound-upper bnd)]
+                              [arity (relation-arity rel)]
+                              [expansion (get-expansion upper arity coloring)])
+                         (values rel expansion))))
+  (values bnds* expansions))
+
+
+(define/contract (expand-solution sol expansions)
+  ($-> (solution/c integer?) expansions? (solution/c symbol?))
+  (for/hash ([(rel b) (in-hash sol)])
+    (let ([expansion (hash-ref expansions rel)])
+      (values rel
+              (for/list ([t* (in-list b)])
+                (let-values ([(t make) (match t*
+                                         [(cons (list t ...) i) (values t (lambda (t) (cons t i)))]
+                                         [(list t ...) (values t identity)])])
+                  (make (for/list ([(a i) (in-indexed (in-list t))])
+                          (let* ([h (list-ref expansion i)])
+                            (hash-ref h a))))))))))
+  
+  (provide collapse-universe expand-solution)

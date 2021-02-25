@@ -41,9 +41,9 @@
  image image?
  f/all f/some f/max f/domain
  domain
+ collapse-universe
+ expand-solution
  ; TMP:
  matrix-entries
  relation-name
- color
- collapse
  )
