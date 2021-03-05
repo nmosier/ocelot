@@ -43,6 +43,11 @@
  domain
  collapse-universe
  expand-solution
+ node/formula?
+ node/expr/relation?
+ node/function?
+ relation-arity
+ relation-name
  ; TMP:
  matrix-entries
  relation-name
