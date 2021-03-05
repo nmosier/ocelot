@@ -48,6 +48,7 @@
  node/function?
  relation-arity
  relation-name
+ node-name
  ; TMP:
  matrix-entries
  relation-name
