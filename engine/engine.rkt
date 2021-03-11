@@ -229,3 +229,25 @@
 
 (define (interpret-f-dom universe relations func cache)
   (matrix/f-domain universe func))
+
+;;;; UTILITIES (currently unused) ;;;;
+(define tuple? (listof any/c))
+(define relation-element? tuple?)
+(define function-element? (cons/c relation-element? integer?))
+(define relfun-element? (or/c relation-element? function-element?))
+
+(define/contract (relation-element-tuple elem)
+  ($-> relation-element? tuple?)
+  elem)
+(define/contract (function-element-tuple elem)
+  ($-> function-element? tuple?)
+  (car elem))
+
+(define/contract (relation-element tuple)
+  ($-> tuple? relation-element?)
+  tuple)
+
+(define/contract (function-element tuple value)
+  ($-> tuple? integer? function-element?)
+  (cons tuple value))
+

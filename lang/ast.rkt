@@ -463,3 +463,5 @@
     (raise-argument-error 'f/dom "node/fexpr?" func))
   (node/expr/f/dom (node/expr-arity func) func))
 
+
+(define node? (or/c node/formula? node/expr?))

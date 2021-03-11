@@ -3,7 +3,7 @@
 (require "lang/ast.rkt" "lang/bounds.rkt" "lang/sketch.rkt" "lang/universe.rkt"
          "engine/engine.rkt" "engine/interpretation.rkt"
          "lib/print.rkt" "lib/simplify.rkt" "lib/simplify-solve.rkt"
-         "engine/matrix.rkt" "engine/collapse.rkt")
+         "engine/matrix.rkt" "engine/collapse.rkt" "engine/eval.rkt")
 
 (provide
  ; lang/ast.rkt
@@ -49,6 +49,8 @@
  relation-arity
  relation-name
  node-name
+ node?
+ evaluate-node
  ; TMP:
  matrix-entries
  relation-name

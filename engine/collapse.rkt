@@ -295,7 +295,6 @@
 ;;; UNIVERSE COLLAPSING ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define node? (or/c node/expr? node/formula?))
 (define bounded-node? (or/c node/expr/relation? node/function?))
 
 (define expansion? (listof (hash/c integer? symbol?)))
@@ -369,4 +368,4 @@
                           (let* ([h (list-ref expansion i)])
                             (hash-ref h a))))))))))
   
-  (provide collapse-universe expand-solution)
+  (provide collapse-universe expand-solution node?)
