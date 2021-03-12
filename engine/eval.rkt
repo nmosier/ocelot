@@ -16,17 +16,20 @@
 (define model? (hash/c relfun? elements?))
          
 (define/contract (evaluate-node formula model)
-  ($-> node? model? elements?)
+  ($-> node? model? (or/c elements? boolean?))
   (evaluate-rec formula model))
 
 (define/contract (evaluate-rec formula model)
-  ($-> node? model? elements?)
+  ($-> node? model? (or/c elements? boolean?))
   (match formula
     [(node/expr/op arity args)
      (let ([args* (for/list ([arg (in-list args)])
                     (evaluate-rec arg model))])
        (evaluate-expr-op formula args*))]
     [(? node/expr/relation?) (hash-ref model formula)]
+    [(node/expr/domain arity arg)
+     (let ([arg* (evaluate-rec arg model)])
+       (map (curryr take 1) arg*))]
     [(? node/function?) (hash-ref model formula)]
     [(node/expr/constant arity type) (evaluate-constant)]
     [(node/expr/comprehension arity decls f)
@@ -93,6 +96,6 @@
     [(? node/formula/op/&&?) (for/and ([arg (in-list args)]) arg)]
     [(? node/formula/op/=>?) (if (first args) (second args) #t)]
     [(? node/formula/op/in?) (apply subset? args)]
-    [(? node/formula/op/=?) (apply equal? args)]
+    [(? node/formula/op/=?) (apply set=? args)]
     [(? node/formula/op/!?) (apply not args)]))
      
