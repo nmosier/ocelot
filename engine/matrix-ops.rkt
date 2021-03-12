@@ -147,5 +147,5 @@
   (define step (expt univSize (- (matrix-arity universe F) 1)))
   (for*/all ([F (matrix-entries F)])
     (matrix (for/list ([row (in-range univSize)])
-              (for/fold ([acc #t]) ([col (in-range step)])
-                (&& acc (list-ref F (+ (* row step) col))))))))
+              (for/fold ([acc #f]) ([col (in-range step)])
+                (|| acc (list-ref F (+ (* row step) col))))))))
